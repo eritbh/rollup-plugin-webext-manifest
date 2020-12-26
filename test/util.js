@@ -1,15 +1,10 @@
 import test from 'ava';
-import {cleanManifest, globalExportsVariableName} from '../src/util.js';
+import {
+	flattenedImportsList,
+	globalExportsVariableName,
+} from '../src/util.js';
 
-test('cleanManifest', t => {
-	const cases = [
-		[[{}, {}], {}],
-	];
-
-	for (const [inputs, output] of cases) {
-		t.deepEqual(cleanManifest(...inputs), output);
-	}
-});
+test.todo('cleanManifest');
 
 test('globalExportsVariableName', t => {
 	const cases = [
@@ -26,4 +21,24 @@ test('globalExportsVariableName', t => {
 test('globalExportsVariableName collision resolution', t => {
 	t.not(globalExportsVariableName('!'), globalExportsVariableName('@'));
 	t.is(globalExportsVariableName('!'), globalExportsVariableName('!'));
+});
+
+test('flattenedImportsList', t => {
+	const cases = [
+		[
+			{
+				a: {imports: ['b', 'c']},
+				b: {imports: ['c']},
+				c: {imports: ['d', 'e']},
+				d: {imports: []},
+				e: {imports: []},
+			},
+			'a',
+			['d', 'e', 'c', 'b', 'a'],
+		],
+	];
+
+	for (const [bundle, entry, output] of cases) {
+		t.deepEqual(flattenedImportsList(bundle, entry), output);
+	}
 });
