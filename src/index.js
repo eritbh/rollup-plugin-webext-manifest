@@ -36,25 +36,28 @@ export default function webextensionManifest ({
 	writeAllBrowserSpecificSettings = false,
 }) {
 	if (!targetPlatform) {
-		throw new Error('targetPlatform option is required for webextension-manifest.');
+		throw new Error('targetPlatform option is required for plugin webext-manifest.');
 	}
 
-	// We get this at the options step but don't emit it until the end of the build
+	// The plugin yeets the user's configuration (except for some plugins used
+	// for module resolution), and instead loads entry points from the manifest,
+	// processing them in code-splitting mode and outputting modules. Then, for
+	// every entry point, it runs an additional rollup process using the user's
+	// existing configuration (except without the module resolution plugins that
+	// already ran) to convert modules to IIFE-based code. Entirely custom
+	// module resolution is used to load dependencies from global variables.
+	// Finally, the manifest is rewritten to include the code-split chunks and
+	// ensure that files are ordered after their dependencies in the manifest.
+
 	let manifestLocation;
 	let manifestContent;
-	// We store the options passed to the initial Rollup process, completely
-	// replace them with our own, then reuse them for the later Rollup processes
-	let originalOptions;
-	// A list of manifest chunk IDs so we only process the things we care about
-	const manifestScriptIDs = [];
 
-	// Code references to the manifest are resolved at runtime
-	function load (id) {
-		if (id !== manifestLocation) {
-			return null;
-		}
-		return 'export default (browser || chrome).runtime.getManifest();';
-	}
+	// We store the options passed to the initial Rollup process, completely
+	// replace them with our own, then process
+	let originalOptions;
+
+	// A list of manifest chunk IDs so we only process the things we care about
+	const manifestEntryIDs = [];
 
 	return {
 		name: PLUGIN_NAME,
@@ -63,48 +66,58 @@ export default function webextensionManifest ({
 			if (typeof originalOptions.input === 'string') {
 				manifestLocation = resolve(__dirname, originalOptions.input);
 			} else {
-				throw new Error('shrug');
+				throw new Error('Manifest should be the only entry point');
 			}
 			try {
 				manifestContent = JSON.parse(await readFile(manifestLocation));
 			} catch (error) {
 				throw new Error('Failed to load manifest');
 			}
+
 			// The directory the manifest file is in
 			const rootSearchPath = resolve(manifestLocation, '..');
 
-			const options = {
-				input: [],
-				plugins: originalOptions.plugins,
+			// Gather all entry points specified in the manifest
+			(manifestContent.content_scripts || []).forEach(({js}) => {
+				js.forEach(filename => {
+					const id = resolve(rootSearchPath, filename);
+					manifestEntryIDs.push(id);
+				});
+				// TODO: also do CSS and stuff
+			});
+
+			return {
+				// All entry points get processed so code splitting can happen
+				input: manifestEntryIDs,
+				// If plugins specify resolve or load hooks, they need to be run
+				// with the first build; other plugins aren't applied until the
+				// final step
+				plugins: originalOptions.plugins.filter(p => p.resolveId || p.load),
+				// The first build just does code splitting and outputs with
+				// `format: 'es'`; other output options are held for the end
 				output: {
 					format: 'es',
 				},
 			};
-
-			(manifestContent.content_scripts || []).forEach(({js}) => {
-				js.forEach(filename => {
-					const id = resolve(rootSearchPath, filename);
-					manifestScriptIDs.push(id);
-					options.input.push(id);
-				});
-				// TODO: also do CSS
-			});
-
-			return options;
 		},
 
-		// Code references to the manifest are resolved at runtime
-		load,
+		load (id) {
+			// Code references to the manifest are resolved at runtime
+			if (id === manifestLocation) {
+				return 'export default (browser || chrome).runtime.getManifest();';
+			}
+			// Other modules are loaded normally
+			return null;
+		},
 
 		async generateBundle (options, generateFromBundle) {
-			console.log();
-			console.log(generateFromBundle);
-			for (const [chunkPathThing, chunk] of Object.entries(generateFromBundle)) {
-				console.log();
-				console.group(chunkPathThing);
-				console.log(chunk);
-				// eslint-disable-next-line no-await-in-loop
+			// For every emitted chunk, run rollup again with a different
+			// configuration to convert module import/export to global variable
+			// references and IIFE code
+			await Promise.all(Object.entries(generateFromBundle).map(async ([chunkPathThing, chunk]) => {
+				// Generate a new bundle for this entry
 				const newBundle = await rollup({
+					// TODO: actually pass original input options
 					plugins: [
 						// a plugin whose only job is to emit the file we're processing
 						{
@@ -115,23 +128,21 @@ export default function webextensionManifest ({
 									id: chunkPathThing,
 									name: chunk.name,
 								});
-								console.log('test');
 							},
 
 							resolveId (id) {
 								// TODO
 								const result = id.replace('./', '');
-								console.log('resolving', id, 'to', result);
 								return result;
 							},
-							// Code references to the manifest are resolved at runtime
 							load (id) {
-								console.log('loading', id);
+								// The entry point is loaded from the output of the initial bundle
 								if (id === chunkPathThing) {
-									console.log('Requested file is entry point, returning itself');
 									return generateFromBundle[id].code;
 								}
-								console.log('Shimming', generateFromBundle[id].exports);
+
+								// Dependencies aren't explicitly imported from this file, but included before it in the
+								// manifest. Their values will be read from global variables.
 								// TODO: default exports
 								return `
 									const {${generateFromBundle[id].exports.join(', ')}} = ${globalExportsVariableName(id)};
@@ -143,29 +154,29 @@ export default function webextensionManifest ({
 						nodeResolve(),
 					],
 				});
-				// eslint-disable-next-line no-await-in-loop
+
+				// Get the output of the bundle
 				const {output} = await newBundle.generate({
+					// TODO: actually pass original output options
 					format: 'iife',
 					name: globalExportsVariableName(chunkPathThing),
 				});
-				console.group('OUTPUT');
-				console.log(output.map(o => o.code).join('\n\n---[NEW OUTPUT]---\n\n'));
+
+				// Overwrite emitted code for this chunk
 				if (output.length > 1) {
-					console.log('Weird multiple outputs, this is bad');
+					throw new Error('Weird multiple outputs, this is bad');
 				} else {
 					generateFromBundle[chunkPathThing].code = output[0].code;
+					// TODO: sourcemap support
+					generateFromBundle[chunkPathThing].map = null;
 				}
-				console.groupEnd();
-				console.groupEnd();
-			}
+			}));
 
-			// Update paths in manifest
-			console.group('Updating manifest paths');
+			// Rewrite manifest paths to include chunk dependencies
 			for (const script of manifestContent.content_scripts) {
 				let newScriptFiles = [];
 				for (const file of script.js) {
 					const flattened = flattenedImportsList(generateFromBundle, file);
-					console.log(file, 'becomes', flattened);
 					newScriptFiles = newScriptFiles.concat(flattened);
 				}
 				script.js = newScriptFiles.filter((val, i, arr) => arr.indexOf(val) === i);
