@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-webext-manifest",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Generates rollup bundles from Web Extension manifests.",
   "main": "src/index.js",
   "author": "eritbh <erin20913@gmail.com>",
