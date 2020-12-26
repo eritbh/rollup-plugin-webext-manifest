@@ -1,4 +1,4 @@
-# rollup-plugin-webextension-manifest
+# rollup-plugin-webext-manifest
 
 Theoretically a [Rollup][rollup] plugin for processing [web extension manifest files][webext-manifest].
 
@@ -22,7 +22,7 @@ Add a configuration object to your `rollup.config.js` that takes your `manifest.
 
 ```js
 // rollup.config.js
-import processManifest from 'rollup-plugin-webextension-manifest';
+import processManifest from 'rollup-plugin-webext-manifest';
 export default [
   {
     input: 'manifest.json',

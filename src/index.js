@@ -29,7 +29,7 @@ const PLUGIN_NAME = 'webext-manifest';
  * output, not just those for the target platform.
  * @returns {object}
  */
-export default function webextensionManifest ({
+export default function webextManifest ({
 	targetPlatform,
 	indent = undefined,
 	geckoIncognitoSplitSubstitute = 'not_allowed',
