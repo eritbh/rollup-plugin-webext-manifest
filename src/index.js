@@ -66,7 +66,7 @@ export default function webextManifest ({
 
 			// Get the manifest location from the input option
 			if (typeof originalOptions.input === 'string') {
-				manifestLocation = resolve(new URL(import.meta.url).href, originalOptions.input);
+				manifestLocation = resolve(process.cwd(), originalOptions.input);
 			} else {
 				throw new Error('Manifest should be the only entry point');
 			}
