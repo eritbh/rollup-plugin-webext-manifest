@@ -6,10 +6,13 @@
   "author": "eritbh <erin20913@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "ava"
   },
   "devDependencies": {
+    "ava": "^3.14.0",
     "eslint": "^7.16.0",
+    "esm": "^3.2.25",
     "typescript": "^4.1.3"
   },
   "dependencies": {
@@ -21,5 +24,10 @@
     "parserOptions": {
       "sourceType": "module"
     }
+  },
+  "ava": {
+    "require": [
+      "esm"
+    ]
   }
 }

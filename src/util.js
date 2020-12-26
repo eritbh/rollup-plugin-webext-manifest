@@ -23,8 +23,19 @@ export function cleanManifest (manifest, {
 	return manifest;
 }
 
+const varNameCache = new Map();
 export function globalExportsVariableName (chunkPathThing) {
-	return `__rollupWebextManifest__${chunkPathThing.replace(/[^a-z0-9_]/gi, '_')}__`;
+	const existing = varNameCache.get(chunkPathThing);
+	if (existing != null) {
+		return existing;
+	}
+	let name = `__rollupWebextManifest__${chunkPathThing.replace(/[^a-z0-9_]/gi, '_')}__`;
+	// eslint-disable-next-line no-loop-func
+	while ([...varNameCache.values()].some(val => val === name)) {
+		name += '_';
+	}
+	varNameCache.set(chunkPathThing, name);
+	return name;
 }
 
 export function flattenedImportsList (bundle, chunkPathThing) {
