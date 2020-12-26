@@ -10,8 +10,7 @@ import {
 	flattenedImportsList,
 	globalExportsVariableName,
 } from './util';
-
-const PLUGIN_NAME = 'webext-manifest';
+import stageTwoPlugin from './pluginInternal';
 
 /**
  * @param {object} options
@@ -60,21 +59,27 @@ export default function webextManifest ({
 	const manifestEntryIDs = [];
 
 	return {
-		name: PLUGIN_NAME,
+		name: 'webext-manifest',
+
 		async options (originals) {
+			// Store the original set of options
 			originalOptions = originals;
+
+			// Get the manifest location from the input option
 			if (typeof originalOptions.input === 'string') {
 				manifestLocation = resolve(__dirname, originalOptions.input);
 			} else {
 				throw new Error('Manifest should be the only entry point');
 			}
+
+			// Load the manifest
 			try {
 				manifestContent = JSON.parse(await readFile(manifestLocation));
 			} catch (error) {
 				throw new Error('Failed to load manifest');
 			}
 
-			// The directory the manifest file is in
+			// Get the manifest's directory; relative paths always start here
 			const rootSearchPath = resolve(manifestLocation, '..');
 
 			// Gather all entry points specified in the manifest
@@ -86,6 +91,7 @@ export default function webextManifest ({
 				// TODO: also do CSS and stuff
 			});
 
+			// Overwrite the options for the current build
 			return {
 				// All entry points get processed so code splitting can happen
 				input: manifestEntryIDs,
@@ -119,39 +125,12 @@ export default function webextManifest ({
 				const newBundle = await rollup({
 					// TODO: actually pass original input options
 					plugins: [
-						// a plugin whose only job is to emit the file we're processing
-						{
-							name: `${PLUGIN_NAME}-internal`,
-							buildStart () {
-								this.emitFile({
-									type: 'chunk',
-									id: chunkPathThing,
-									name: chunk.name,
-								});
-							},
-
-							resolveId (id) {
-								// TODO
-								const result = id.replace('./', '');
-								return result;
-							},
-							load (id) {
-								// The entry point is loaded from the output of the initial bundle
-								if (id === chunkPathThing) {
-									return generateFromBundle[id].code;
-								}
-
-								// Dependencies aren't explicitly imported from this file, but included before it in the
-								// manifest. Their values will be read from global variables.
-								// TODO: default exports
-								return `
-									const {${generateFromBundle[id].exports.join(', ')}} = ${globalExportsVariableName(id)};
-									export {${generateFromBundle[id].exports.join(', ')}};
-								`;
-							},
-						},
-						// TODO why...?
-						nodeResolve(),
+						// This plugin is responsible for actually performing
+						// the transformations we need
+						stageTwoPlugin(generateFromBundle, chunkPathThing, chunk),
+						// All other plugins specified in config (other than
+						// module resolution ones) are also applied in this step
+						...originalOptions.plugins.filter(p => !p.resolveId && !p.load),
 					],
 				});
 
