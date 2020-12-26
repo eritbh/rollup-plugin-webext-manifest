@@ -89,6 +89,10 @@ export default function webextManifest ({
 				});
 				// TODO: also do CSS and stuff
 			});
+			(manifestContent.background?.scripts || []).forEach(filename => {
+				const id = resolve(rootSearchPath, filename);
+				manifestEntryIDs.push(id);
+			});
 
 			// Overwrite the options for the current build
 			return {
@@ -151,13 +155,21 @@ export default function webextManifest ({
 			}));
 
 			// Rewrite manifest paths to include chunk dependencies
-			for (const script of manifestContent.content_scripts) {
+			for (const script of manifestContent.content_scripts || []) {
 				let newScriptFiles = [];
 				for (const file of script.js) {
 					const flattened = flattenedImportsList(generateFromBundle, file);
 					newScriptFiles = newScriptFiles.concat(flattened);
 				}
 				script.js = newScriptFiles.filter((val, i, arr) => arr.indexOf(val) === i);
+			}
+			if (manifestContent.background?.scripts) {
+				let newScriptFiles = [];
+				for (const file of manifestContent.background.scripts) {
+					const flattened = flattenedImportsList(generateFromBundle, file);
+					newScriptFiles = newScriptFiles.concat(flattened);
+				}
+				manifestContent.background.scripts = newScriptFiles;
 			}
 
 			// Emit the manifest as an asset
