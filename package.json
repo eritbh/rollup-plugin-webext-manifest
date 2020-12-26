@@ -9,8 +9,10 @@
   "author": "eritbh <erin20913@gmail.com>",
   "license": "MIT",
   "scripts": {
+    "build": "rollup -c",
     "lint": "eslint src",
-    "test": "ava"
+    "test": "ava",
+    "prepublishOnly": "rollup -c"
   },
   "dependencies": {
     "rollup": "^2.35.1"
