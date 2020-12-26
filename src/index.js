@@ -2,7 +2,6 @@ import fs from 'fs';
 import {resolve} from 'path';
 import util from 'util';
 import {rollup} from 'rollup';
-import nodeResolve from '@rollup/plugin-node-resolve';
 const readFile = util.promisify(fs.readFile);
 
 import {
