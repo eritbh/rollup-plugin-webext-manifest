@@ -52,6 +52,7 @@ const bundle = {
 };
 console.log(flattenedImportsList(bundle, 'a'));
 console.groupEnd();
+
 /**
  * @param {object} options
  * @param {'gecko' | 'chrome'} options.targetPlatform
@@ -135,10 +136,10 @@ export default function webextensionManifest ({
 		// Code references to the manifest are resolved at runtime
 		load,
 
-		async generateBundle (options, bundle) {
+		async generateBundle (options, generateFromBundle) {
 			console.log();
-			console.log(bundle);
-			for (const [chunkPathThing, chunk] of Object.entries(bundle)) {
+			console.log(generateFromBundle);
+			for (const [chunkPathThing, chunk] of Object.entries(generateFromBundle)) {
 				console.log();
 				console.group(chunkPathThing);
 				console.log(chunk);
@@ -168,12 +169,13 @@ export default function webextensionManifest ({
 								console.log('loading', id);
 								if (id === chunkPathThing) {
 									console.log('Requested file is entry point, returning itself');
-									return bundle[id].code;
+									return generateFromBundle[id].code;
 								}
-								console.log('Shimming', bundle[id].exports);
+								console.log('Shimming', generateFromBundle[id].exports);
+								// TODO: default exports
 								return `
-									const {${bundle[id].exports.join(', ')}} = window.${globalExportsVariableName(id)};
-									export {${bundle[id].exports.join(', ')}};
+									const {${generateFromBundle[id].exports.join(', ')}} = ${globalExportsVariableName(id)};
+									export {${generateFromBundle[id].exports.join(', ')}};
 								`;
 							},
 						},
@@ -190,7 +192,7 @@ export default function webextensionManifest ({
 				if (output.length > 1) {
 					console.log('Weird multiple outputs, this is bad');
 				} else {
-					bundle[chunkPathThing].code = output[0].code;
+					generateFromBundle[chunkPathThing].code = output[0].code;
 				}
 				console.groupEnd();
 				console.groupEnd();
@@ -201,7 +203,7 @@ export default function webextensionManifest ({
 			for (const script of manifestContent.content_scripts) {
 				let newScriptFiles = [];
 				for (const file of script.js) {
-					const flattened = flattenedImportsList(bundle, file);
+					const flattened = flattenedImportsList(generateFromBundle, file);
 					console.log(file, 'becomes', flattened);
 					newScriptFiles = newScriptFiles.concat(flattened);
 				}
