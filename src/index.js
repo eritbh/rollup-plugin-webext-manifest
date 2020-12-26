@@ -5,53 +5,13 @@ import {rollup} from 'rollup';
 import nodeResolve from '@rollup/plugin-node-resolve';
 const readFile = util.promisify(fs.readFile);
 
+import {
+	cleanManifest,
+	flattenedImportsList,
+	globalExportsVariableName,
+} from './util';
+
 const PLUGIN_NAME = 'webext-manifest';
-
-function cleanManifest (manifest, {
-	targetPlatform,
-	writeAllBrowserSpecificSettings,
-	geckoIncognitoSplitSubstitute,
-}) {
-	// Only include `browser_specific_settings` for current platform
-	if (!writeAllBrowserSpecificSettings && manifest.browser_specific_settings) {
-		if (manifest.browser_specific_settings[targetPlatform]) {
-			manifest.browser_specific_settings = {
-				[targetPlatform]: manifest.browser_specific_settings[targetPlatform],
-			};
-		} else {
-			delete manifest.browser_specific_settings;
-		}
-	}
-
-	// Replace incognito: split for Firefox
-	// https://bugzilla.mozilla.org/show_bug.cgi?id=1380812
-	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/incognito
-	if (geckoIncognitoSplitSubstitute && manifest.incognito === 'split' && targetPlatform === 'gecko') {
-		manifest.incognito = geckoIncognitoSplitSubstitute;
-	}
-	return manifest;
-}
-
-function globalExportsVariableName (chunkPathThing) {
-	return `__rollupWebextManifest__${chunkPathThing.replace(/[^a-z0-9_]/gi, '_')}__`;
-}
-
-function flattenedImportsList (bundle, chunkPathThing) {
-	const chunk = bundle[chunkPathThing];
-	const nestedImports = chunk.imports.map(importee => flattenedImportsList(bundle, importee));
-	return [].concat(...nestedImports, [chunkPathThing]).filter((val, i, arr) => arr.indexOf(val) === i);
-}
-
-console.group('flattening test');
-const bundle = {
-	a: {imports: ['b', 'c']},
-	b: {imports: ['c', 'd']},
-	c: {imports: ['e']},
-	d: {imports: []},
-	e: {imports: []},
-};
-console.log(flattenedImportsList(bundle, 'a'));
-console.groupEnd();
 
 /**
  * @param {object} options
@@ -148,7 +108,7 @@ export default function webextensionManifest ({
 					plugins: [
 						// a plugin whose only job is to emit the file we're processing
 						{
-							name: 'inject',
+							name: `${PLUGIN_NAME}-internal`,
 							buildStart () {
 								this.emitFile({
 									type: 'chunk',
@@ -179,6 +139,7 @@ export default function webextensionManifest ({
 								`;
 							},
 						},
+						// TODO why...?
 						nodeResolve(),
 					],
 				});
