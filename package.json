@@ -10,9 +10,9 @@
   "license": "MIT",
   "scripts": {
     "build": "rollup -c",
-    "lint": "eslint src",
+    "lint": "eslint src test rollup.config.js",
     "test": "ava",
-    "prepublishOnly": "rollup -c"
+    "prepublishOnly": "eslint src test rollup.config.js && rollup -c"
   },
   "dependencies": {
     "rollup": "^2.35.1"
