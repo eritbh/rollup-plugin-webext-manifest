@@ -27,6 +27,7 @@
   "eslintConfig": {
     "extends": "@geo1088",
     "parserOptions": {
+      "ecmaVersion": 11,
       "sourceType": "module"
     }
   },
