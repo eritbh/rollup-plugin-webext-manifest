@@ -16,9 +16,7 @@ npm install --save-dev rollup-plutin-webext-manifest
 
 ## Usage
 
-> you dont lol
-
-Add a configuration object to your `rollup.config.js` that takes your `manifest.json` as its input and includes this plugin:
+Add a configuration object to your `rollup.config.js` that takes your `manifest.json` as its only input. Include this module as the *first* plugin in your configuration. Set `targetPlatform` to one of `chrome` (Chrome) or `gecko` (Firefox). Minimal example:
 
 ```js
 // rollup.config.js
@@ -31,9 +29,11 @@ export default [
         targetPlatform: 'gecko',
       }),
     ],
-	output: {
-		file: 'build/manifest.json'
-	}
+    output: {
+      dir: 'build',
+    },
   },
 ];
 ```
+
+TODO: document other options
