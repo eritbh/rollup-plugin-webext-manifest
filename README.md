@@ -28,8 +28,6 @@ The plugin will look for entry points in the following parts of your `manifest.j
 
 Paths are interpreted relative to the manifest's location. Notably, the plugin will *not* look for entry points in `web_accessible_resources`.
 
-When rollup is run, the plugin will first perform a code-splitting build of all entry points. It will then build each emitted chunk, converting `import`/`export` to IIFEs that "import" and "export" code by reading and setting global variables. Finally, it will generate a new manifest file that includes the bundled outputs in the correct order to ensure dependencies are included before the files that depend on them.
-
 ### Configuration
 
 Add a configuration object to your `rollup.config.js` that takes your `manifest.json` as its only input. Include this module as the *first* plugin in your configuration. Set `targetPlatform` to one of `chrome` (Chrome) or `gecko` (Firefox). In output options, use `assetFileNames: '[name].[ext]'` to ensure the emitted manifest is called `manifest.json` (otherwise it won't be recognized).
