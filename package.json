@@ -8,6 +8,11 @@
   ],
   "author": "eritbh <erin20913@gmail.com>",
   "license": "MIT",
+  "keywords": [
+    "rollup-plugin",
+    "web extensions",
+    "browser extensions"
+  ],
   "scripts": {
     "build": "rollup -c",
     "lint": "eslint src test rollup.config.js",
