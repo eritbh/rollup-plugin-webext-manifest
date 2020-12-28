@@ -14,7 +14,7 @@ Inspired by [this Firefox bug][firefox-module-content-script].
 # With Yarn
 yarn add --dev rollup-plugin-webext-manifest
 # With npm
-npm install --save-dev rollup-plutin-webext-manifest
+npm install --save-dev rollup-plugin-webext-manifest
 ```
 
 ## Usage
