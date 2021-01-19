@@ -69,15 +69,15 @@ The plugin takes a single object argument with the following options:
 [manifest-background]: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/background
 [gecko-incognito-split]: https://bugzilla.mozilla.org/show_bug.cgi?id=1380812
 
-### Plugin compatibility
-
-Because this plugin splits the build process between multiple Rollup processes, more complicated plugins probably won't play nicely with it. Currently, plugins that specify `resolveId` or `load` hooks are run with the first build stage, and plugins that have neither of these hooks will run in the second stage.
-
-If you require another plugin that doesn't work, or if you have a better idea of how to handle this, raise an issue and I'll see what I can do.
-
 ## Explanation
 
-When rollup is run, the plugin will first perform a code-splitting build of all entry points. It will then build each emitted chunk, converting `import`/`export` to IIFEs that "import" and "export" code by reading and setting global variables. Finally, it will generate a new manifest file that includes the bundled outputs in the correct order to ensure dependencies are included before the files that depend on them. This strategy
+When rollup is run, the plugin will first look for JS entry points defined in the input manifest and add them to the Rollup process, resulting in multiple chunks. It will then run rollup again on each chunk individually, converting `import`/`export` to IIFEs that "import" and "export" code by reading and setting global variables. Finally, it will map the bundled chunks to their original entry points in the manifest file, update some other manifest settings according to the plugin's configuration, and emit the generated manifest.
+
+### Plugin compatibility
+
+Because this plugin actually causes Rollup to run multiple times, there's a good chance that other plugins won't play nicely with it if they rely on multiple build stages. Currently, plugins that specify `resolveId` or `load` hooks are run with the first build stage, and plugins that have neither of these hooks will run in the second stage.
+
+If you require another plugin that doesn't work, or if you have a better idea of how to handle this, raise an issue and I'll see what I can do.
 
 ## Contributing
 
